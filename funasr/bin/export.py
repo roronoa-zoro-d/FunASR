@@ -15,7 +15,7 @@ def main_hydra(cfg: DictConfig):
             return {k: to_plain_list(v) for k, v in cfg_item.items()}
         else:
             return cfg_item
-
+    print(f'cfg: {cfg}')
     kwargs = to_plain_list(cfg)
 
     if kwargs.get("debug", False):

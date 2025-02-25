@@ -36,6 +36,8 @@ from funasr.utils.misc import prepare_model_dir
 from funasr.train_utils.model_summary import model_summary
 from funasr import AutoModel
 
+print(f'train----- {__file__}')
+
 
 @hydra.main(config_name=None, version_base=None)
 def main_hydra(kwargs: DictConfig):
@@ -43,6 +45,9 @@ def main_hydra(kwargs: DictConfig):
         import pdb
 
         pdb.set_trace()
+    
+    print(f'train.... {__file__}')
+    print(kwargs)
 
     assert "model" in kwargs
     if "model_conf" not in kwargs:
@@ -108,6 +113,12 @@ def main(**kwargs):
                 if k.startswith(t + ".") or k == t:
                     logging.info(f"Setting {k}.requires_grad = False")
                     p.requires_grad = False
+        print(f'finetune params: ')
+        for k, p in model.named_parameters():
+            if p.requires_grad == True:
+                print(k)
+        print(f'\n\n')
+            
     if local_rank == 0:
         logging.info(f"{model_summary(model)}")
 
@@ -259,4 +270,5 @@ def main(**kwargs):
 
 
 if __name__ == "__main__":
+    print(sys.argv)
     main_hydra()
