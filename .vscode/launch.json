@@ -1,0 +1,75 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+
+
+
+
+
+        {
+            "name": "Python train.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/funasr/bin/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config-path", "${workspaceFolder}/examples/aishell/paraformer/conf",
+                "--config-name", "paraformer_conformer_12e_6d_2048_256.yaml", 
+                "++debug=false", 
+                "++train_data_set_list=${workspaceFolder}/examples/aishell/DATA/data/train/audio_datasets.jsonl", 
+                "++valid_data_set_list=${workspaceFolder}/examples/aishell/DATA/data/dev/audio_datasets.jsonl", 
+                "++tokenizer_conf.token_list=${workspaceFolder}/examples/aishell/DATA/data/zh_token_list/char/tokens.txt", 
+                "++frontend_conf.cmvn_file=${workspaceFolder}/examples/aishell/DATA/data/train/am.mvn", 
+                "++output_dir=/data/nas/zhangjiayuan/experiment/modelscope/aishell/paraformer//exp/baseline_paraformer_conformer_12e_6d_2048_256_zh_char_exp1",
+                "++dataset_conf.num_workers=1",
+            ]
+        },
+
+
+        {
+            "name": "Python finetune train.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/funasr/bin/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "++model=iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+                "++freeze_param=['encoder', 'decoder.embed', 'decoder.after_norm', 'decoder.decoders', 'predictor']",
+                "++train_data_set_list=${workspaceFolder}/examples/aishell/DATA/data/train/audio_datasets.jsonl", 
+                "++valid_data_set_list=${workspaceFolder}/examples/aishell/DATA/data/dev/audio_datasets.jsonl", 
+                "++output_dir=/data/nas/zhangjiayuan/experiment/modelscope/aishell/paraformer/exp/finetune-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch_exp1",
+                "++dataset_conf.num_workers=1",
+                "++dataset_conf.batch_type=example",
+                "++dataset_conf.batch_size=10",
+            ]
+        },
+
+        {
+            "name": "Python demo_Monotonic-Aligner.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/zoro/demo_Monotonic-Aligner.py",
+            "console": "integratedTerminal",
+            
+        },
+
+        {
+            "name": "Python export.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/funasr/bin/export.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config-path", "/data/nas/zhangjiayuan/experiment/paraformer_finitune/exp1/exp/finetune1",
+                "--config-name", "config.yaml", 
+                "++train_data_set_list=${workspaceFolder}/examples/aishell/DATA/data/train/audio_datasets.jsonl", 
+                "++valid_data_set_list=${workspaceFolder}/examples/aishell/DATA/data/dev/audio_datasets.jsonl", 
+                "++tokenizer_conf.token_list=${workspaceFolder}/examples/aishell/DATA/data/zh_token_list/char/tokens.txt", 
+                "++frontend_conf.cmvn_file=${workspaceFolder}/examples/aishell/DATA/data/train/am.mvn", 
+                "++output_dir=/data/nas/zhangjiayuan/experiment/modelscope/aishell/paraformer//exp/baseline_paraformer_conformer_12e_6d_2048_256_zh_char_exp1",
+                "++dataset_conf.num_workers=1",
+            ]
+        },
+
+    ]
+}
