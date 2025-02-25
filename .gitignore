@@ -28,3 +28,9 @@ modelscope_models
 examples/aishell/llm_asr_nar/*
 *egg-info
 env/
+
+
+.vscode/settings.json
+
+examples/aishell/DATA/
+*/DATA/*
