@@ -47,14 +47,16 @@ def to_bytes(dtype) -> int:
 def model_summary(model: torch.nn.Module) -> str:
     message = "Model structure:\n"
     message += str(model)
+    message2 = "Model params:\n"
 
     tot_params, num_params = 0, 0
     for name, param in model.named_parameters():
-        print(
-            "name: {}, dtype: {}, device: {}, trainable: {}, shape: {}, numel: {}".format(
-                name, param.dtype, param.device, param.requires_grad, param.shape, param.numel()
-            )
-        )
+        data = "name: {}, dtype: {}, device: {}, trainable: {}, shape: {}, numel: {}".format(
+                    name, param.dtype, param.device, param.requires_grad, param.shape, param.numel()
+                )
+        print(data)
+        message2 += data + "\n"
+        
         tot_params += param.numel()
         if param.requires_grad:
             num_params += param.numel()
@@ -69,4 +71,7 @@ def model_summary(model: torch.nn.Module) -> str:
 
     dtype = next(iter(model.parameters())).dtype
     message += f"    Type: {dtype}"
+    with open('model.summary.txt', 'w') as f:
+        f.write(message2+"\n\n")
+        f.write(message)
     return message
