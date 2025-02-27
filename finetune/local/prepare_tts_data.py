@@ -4,7 +4,7 @@ import sys
 import os
 import glob
 from datetime import datetime
-
+import re
 
 """
 将一个文件夹下的所有音频和文本，划分成 train dev test 数据集，并生成对应的wav.scp text
@@ -110,12 +110,14 @@ if __name__ == '__main__':
     
     utts = utt2wav.keys() & utt2txt.keys()
     
+    punctuation_pattern = r'[^\w\s\u4e00-\u9fff]'  # 添加了对中文字符的考虑
     datas = []
     for utt_id in utts:
         wav_file = utt2wav[utt_id]
         txt_file = utt2txt[utt_id]
         with open(txt_file, 'r', encoding='utf-8') as f:
             txt = f.read().strip()
+            txt = re.sub(punctuation_pattern, '', txt)
         datas.append({
             "utt": utt_id,
             "txt": txt,
