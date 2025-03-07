@@ -45,6 +45,24 @@
         },
 
         {
+            "name": "Python finetune2 train.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/funasr/bin/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "++model=iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+                "++freeze_param=['encoder', 'decoder.embed', 'decoder.after_norm', 'decoder.decoders', 'predictor']",
+                "++train_data_set_list=${workspaceFolder}/examples/aishell/DATA/data/train/audio_datasets.jsonl", 
+                "++valid_data_set_list=${workspaceFolder}/examples/aishell/DATA/data/dev/audio_datasets.jsonl", 
+                "++output_dir=/data/nas/zhangjiayuan/experiment/modelscope/aishell/paraformer/exp/finetune-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch_exp1",
+                "++dataset_conf.num_workers=1",
+                "++dataset_conf.batch_type=length",
+                "++dataset_conf.batch_size=10000",
+            ]
+        },
+
+        {
             "name": "Python demo_Monotonic-Aligner.py",
             "type": "debugpy",
             "request": "launch",
