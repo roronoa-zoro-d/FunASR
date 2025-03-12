@@ -527,6 +527,7 @@ class Paraformer(torch.nn.Module):
         for i in range(b):
             x = encoder_out[i, : encoder_out_lens[i], :]
             am_scores = decoder_out[i, : pre_token_length[i], :]
+            best1_score = None
             if self.beam_search is not None:
                 nbest_hyps = self.beam_search(
                     x=x,
@@ -540,6 +541,7 @@ class Paraformer(torch.nn.Module):
 
                 yseq = am_scores.argmax(dim=-1)
                 score = am_scores.max(dim=-1)[0]
+                best1_score = torch.exp(score)[:-1]
                 score = torch.sum(score, dim=-1)
                 # pad with mask tokens to ensure compatibility with sos/eos tokens
                 yseq = torch.tensor([self.sos] + yseq.tolist() + [self.eos], device=yseq.device)
@@ -569,6 +571,11 @@ class Paraformer(torch.nn.Module):
                     token = tokenizer.ids2tokens(token_int)
                     text_postprocessed = tokenizer.tokens2text(token)
                     
+                    if best1_score is not None:
+                        wd_score = best1_score.cpu().tolist()
+                    else:
+                        wd_score = []
+                    
                     if pred_timestamp:
                         timestamp_str, timestamp = ts_prediction_lfr6_standard(
                             pre_peak_index[i],
@@ -579,18 +586,23 @@ class Paraformer(torch.nn.Module):
                         )
                         if not hasattr(tokenizer, "bpemodel"):
                             text_postprocessed, time_stamp_postprocessed, _ = postprocess_utils.sentence_postprocess(token, timestamp)
-                        result_i = {"key": key[i], "text": text_postprocessed, "timestamp": time_stamp_postprocessed,}
+                        result_i = {"key": key[i], "text": text_postprocessed, "timestamp": time_stamp_postprocessed, "score": hyp.score.cpu().item(), "wd_score": wd_score}
                     else:
                         if not hasattr(tokenizer, "bpemodel"):
                             text_postprocessed, _ = postprocess_utils.sentence_postprocess(token)
-                        result_i = {"key": key[i], "text": text_postprocessed}
+                        result_i = {"key": key[i], "text": text_postprocessed, "score": hyp.score.cpu().item(), "wd_score": wd_score}
+                    print(f'key: {key[i]}, text: {text_postprocessed}, score: {hyp.score.cpu().item()}')
 
                     if ibest_writer is not None:
                         ibest_writer["token"][key[i]] = " ".join(token)
                         # ibest_writer["text"][key[i]] = text
                         ibest_writer["text"][key[i]] = text_postprocessed
+                        if best1_score is not None:
+                            score_str = [f"{score:.4f}" for score in wd_score]
+                            ibest_writer["score"][key[i]] = " ".join(score_str)
+                        
                 else:
-                    result_i = {"key": key[i], "token_int": token_int}
+                    result_i = {"key": key[i], "token_int": token_int, "score": hyp.score.cpu().item(), "wd_score": wd_score}
                 results.append(result_i)
 
         return results, meta_data
