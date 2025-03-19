@@ -34,3 +34,9 @@ env/
 
 examples/aishell/DATA/
 */DATA/*
+
+zoro/logs/*
+zoro/*.wav
+zoro/__pycache__/*
+
+server/__pycache__/*
