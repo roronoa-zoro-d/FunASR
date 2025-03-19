@@ -35,8 +35,14 @@ env/
 examples/aishell/DATA/
 */DATA/*
 
+finetune/data_json/*
+finetune/*.txt
+
 zoro/logs/*
 zoro/*.wav
 zoro/__pycache__/*
+zoro/logs/*
+zoro/*.jsonl
+zoro/*.scp
 
 server/__pycache__/*
