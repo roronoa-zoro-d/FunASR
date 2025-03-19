@@ -99,6 +99,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   ++freeze_param="['encoder', 'decoder.embed', 'decoder.after_norm', 'decoder.decoders', 'predictor']" \
   ++train_data_set_list="${feats_dir}/data/${train_set}/audio_datasets.jsonl" \
   ++valid_data_set_list="${feats_dir}/data/${valid_set}/audio_datasets.jsonl" \
+  ++dataset_conf.batch_size=128 \
   ++train_conf.keep_nbest_models=100 \
   ++output_dir="${exp_dir}/exp/${model_dir}"   &> ${log_file}
 fi
