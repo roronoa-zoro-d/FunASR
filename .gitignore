@@ -37,6 +37,7 @@ examples/aishell/DATA/
 
 finetune/data_json/*
 finetune/*.txt
+finetune/tts_sentence/*
 
 zoro/logs/*
 zoro/*.wav
