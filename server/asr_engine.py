@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-
+import re
 
 from modelscope.pipelines import pipeline
 from modelscope.utils.constant import Tasks
@@ -127,7 +127,71 @@ class ASR_whisper_large_turbo(ASR_ali_engine_base):
                             )
         
         
+
+class ASR_sense_voice_small(ASR_engine_base):
+    def __init__(self, params=None, device='cpu',):
+        super().__init__(params, device)
+        self.model_space = "modelscope"
+        self.model_name = 'iic/SenseVoiceSmall'
+        self.model_vision = "master"
+        self.engine_name = '{}@{}@{}'.format(self.model_space, self.model_name, self.model_vision)
         
+        self.asr_model  = pipeline(
+                                    task=Tasks.auto_speech_recognition,
+                                    model=self.model_name,
+                                    model_revision=self.model_vision,
+                                    device=device,)
+        
+    
+    def parse_speech_string(self, s: str) -> dict:
+    
+        # 使用正则提取所有标签内容
+        tags = re.findall(r'<\|(.*?)\|>', s)
+        
+        # 提取最后一个标签之后的文本内容
+        text = s.split('|>')[-1].strip()
+        
+        language = tags[0] if len(tags) > 0 else ""
+        emotion = tags[1] if len(tags) > 1 else ""
+        event = tags[2] if len(tags) > 2 else ""
+        itn = tags[3] if len(tags) > 3 else ""
+        
+        res = {}
+        res['language'] = language
+        res['emotion'] = emotion
+        res['event'] = event
+        res['itn'] = itn
+        res['text'] = text
+        
+        return res
+    
+    def asr_inference(self, speech_data, segs=[], fs=16000):
+        res = {}
+        res['model_space'] = self.model_space
+        res['model_name'] = self.model_name
+        res['model_vision'] = self.model_vision
+        
+        res['segs'] = []
+        
+        if len(segs) == 0:
+            segs = [[0, len(speech_data)*1000/fs]]
+        
+        full_text =  ""
+        for i, seg in enumerate(segs):
+            st = int(seg[0]*fs/1000.0)
+            ed = int(seg[1]*fs/1000.0)
+            chunk = speech_data[st:ed]  
+            asr_res = self.asr_model(input=chunk, disable_pbar=True)
+            sv_text = asr_res[0]['text']
+            sv_res = self.parse_speech_string(sv_text)
+            text = sv_res['text']
+            sv_res['seg'] = seg
+            full_text += text
+            res['segs'].append(sv_res)
+        
+        res['full_text'] = full_text
+        
+        return res
 
 
 if __name__ == '__main__':
