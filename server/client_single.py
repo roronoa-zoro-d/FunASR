@@ -1,11 +1,10 @@
-import ray
 import asyncio
 import aiohttp
 import logging
 import soundfile as sf
 import torch
 from collections import deque
-from ray.util.queue import Queue  # 导入 Ray 的分布式队列
+
 
 import requests
 
@@ -75,6 +74,7 @@ def get_asr(wav_path, segs=[],  url='http://127.0.0.1:8000/asr/paraformer/'):
 
 
 wav_scp_file = '/data/nas/dataset/asr/kefu/shidian/wav1.scp'
+wav_scp_file = '/data/nas/dataset/asr/kefu/huaian/wav.scp'
 
 
 utts, utt2wav = read_wav_scp(wav_scp_file)
@@ -86,17 +86,25 @@ for i, utt in enumerate(utts):
     
     task = {"wav_path":wav_path, }
     
+    print(f'utt: {utt} , wav_path: {wav_path}')
+    
     vad_res = get_vad(wav_path)
     if vad_res is None:
         print(f'{utt} vad failed')
         break
     segs = vad_res['vad_segs']
     print(f'vad_res: {vad_res}')
-    asr_res = get_asr(wav_path, segs=segs)
+    asr_res = get_asr(wav_path, segs=segs, url='http://127.0.0.1:8000/asr/paraformer/')
     print(f'asr_res: {asr_res}')
     
     asr_res = get_asr(wav_path, segs=segs, url='http://127.0.0.1:8000/asr/whisper_large/')
     print(f'asr_res: {asr_res}')
+
+    asr_res = get_asr(wav_path, segs=segs, url='http://127.0.0.1:8000/asr/sense_voice_small/')
+    print(f'sense_voice : asr_res: {asr_res}')
+
+    asr_res = get_asr(wav_path, segs=segs, url='http://127.0.0.1:8001/asr/fireredasr/')
+    print(f'fireredasr: asr_res: {asr_res}')
 
     break
 

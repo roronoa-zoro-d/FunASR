@@ -26,7 +26,7 @@ logging_config:
 
 applications:
 
-- name: app1
+- name: paraformer
 
   route_prefix: /asr/paraformer
 
@@ -37,12 +37,12 @@ applications:
   deployments:
 
   - name: ASR_Engine
-    num_replicas: 1
+    num_replicas: 2
     ray_actor_options:
       num_cpus: 1.0
       num_gpus: 0.3
 
-- name: app2
+- name: whisper_large
 
   route_prefix: /asr/whisper_large
 
@@ -53,12 +53,12 @@ applications:
   deployments:
 
   - name: ASR_Engine
-    num_replicas: 1
+    num_replicas: 2
     ray_actor_options:
       num_cpus: 1.0
-      num_gpus: 1
+      num_gpus: 0.3
 
-- name: app3
+- name: whisper_large_turbo
 
   route_prefix: /asr/whisper_large_turbo
 
@@ -69,12 +69,28 @@ applications:
   deployments:
 
   - name: ASR_Engine
-    num_replicas: 1
+    num_replicas: 2
     ray_actor_options:
       num_cpus: 1.0
-      num_gpus: 1
+      num_gpus: 0.3
 
-- name: app4
+- name: sense_voice_small
+
+  route_prefix: /asr/sense_voice_small
+
+  import_path: ray_asr_senseVoice_small:asr_app
+
+  runtime_env: {}
+
+  deployments:
+
+  - name: ASR_Engine
+    num_replicas: 2
+    ray_actor_options:
+      num_cpus: 1.0
+      num_gpus: 0.3
+
+- name: fsmn_vad
 
   route_prefix: /vad/fsmn
 
@@ -85,7 +101,7 @@ applications:
   deployments:
 
   - name: VAD_Engine
-    num_replicas: 1
+    num_replicas: 3
     ray_actor_options:
       num_cpus: 1.0
       num_gpus: 0.3
