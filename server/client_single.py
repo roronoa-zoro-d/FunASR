@@ -79,6 +79,7 @@ wav_scp_file = '/data/nas/dataset/asr/kefu/huaian/wav.scp'
 
 utts, utt2wav = read_wav_scp(wav_scp_file)
 
+port = 8000
 
 for i, utt in enumerate(utts):
     wav_path = utt2wav[utt]
@@ -88,22 +89,22 @@ for i, utt in enumerate(utts):
     
     print(f'utt: {utt} , wav_path: {wav_path}')
     
-    vad_res = get_vad(wav_path)
+    vad_res = get_vad(wav_path, url=f'http://127.0.0.1:{port}/vad/fsmn/')
     if vad_res is None:
         print(f'{utt} vad failed')
         break
     segs = vad_res['vad_segs']
     print(f'vad_res: {vad_res}')
-    asr_res = get_asr(wav_path, segs=segs, url='http://127.0.0.1:8000/asr/paraformer/')
+    asr_res = get_asr(wav_path, segs=segs, url=f'http://127.0.0.1:{port}/asr/paraformer/')
     print(f'asr_res: {asr_res}')
     
-    asr_res = get_asr(wav_path, segs=segs, url='http://127.0.0.1:8000/asr/whisper_large/')
+    asr_res = get_asr(wav_path, segs=segs, url=f'http://127.0.0.1:{port}/asr/whisper_large/')
     print(f'asr_res: {asr_res}')
 
-    asr_res = get_asr(wav_path, segs=segs, url='http://127.0.0.1:8000/asr/sense_voice_small/')
+    asr_res = get_asr(wav_path, segs=segs, url=f'http://127.0.0.1:{port}/asr/sense_voice_small/')
     print(f'sense_voice : asr_res: {asr_res}')
 
-    asr_res = get_asr(wav_path, segs=segs, url='http://127.0.0.1:8001/asr/fireredasr/')
+    asr_res = get_asr(wav_path, segs=segs, url=f'http://127.0.0.1:{port}/asr/fireredasr/')
     print(f'fireredasr: asr_res: {asr_res}')
 
     break
