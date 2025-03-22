@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 VAD_URL = 'http://127.0.0.1:8000/vad/fsmn/'
 ASR_URLS = [
     'http://127.0.0.1:8000/asr/paraformer/',
-    'http://127.0.0.1:8000/asr/whisper_large/',
+    # 'http://127.0.0.1:8000/asr/whisper_large/',
+    'http://127.0.0.1:8000/asr/sense_voice_small/',
     'http://127.0.0.1:8001/asr/fireredasr/'
 ]
 
@@ -78,11 +79,13 @@ async def process_one(session, utt):
     result['annos'] = []  # 包含多个切分方式下的结果,但目前只有一个结果anno
     
     stats = {}
+    stats['speech_dur'] = len(speech_data) / fs
+    stats['time_counter'] = []
     
     # 处理VAD
     vad_result, vad_use_time = await async_get_vad(session, wav_path)
-    stats['vad_time'] = vad_use_time
-    stats['rtf_vad'] = vad_use_time / (len(speech_data) / fs)
+    rtf_vad = vad_use_time / (len(speech_data) / fs)
+    stats['time_counter'].append({"model_name": "fsmn_vad", "use_time": vad_use_time, "rtf": rtf_vad})
     if not vad_result:
         return result, stats
     
@@ -94,13 +97,22 @@ async def process_one(session, utt):
     tasks = [async_get_asr(session, wav_path, segs, url) for url in ASR_URLS]
     async_results = await asyncio.gather(*tasks)
     
+  
     asr_results = []
     for asr_result,  asr_use_time in async_results:
         if asr_result:
             asr_results.append(asr_result)
+            
             model_name = asr_result['model_name'].split('/')[-1]
-            stats[model_name] = asr_use_time
-            stats[f'rtf_{model_name}'] = asr_use_time / result['dur']
+            rtf = asr_use_time / result['dur']
+            asr_stat = {
+                "model_name": model_name,
+                "use_time": asr_use_time,
+                "rtf": rtf,
+            }
+            stats['time_counter'].append(asr_stat)
+
+            
     
     
     anno['vad_asr_res'] = asr_results
@@ -128,6 +140,35 @@ async def process_chunk(utt_chunk, concurrency=10):
 def run_async_chunk(utt_chunk):
     return asyncio.run(process_chunk(utt_chunk))
 
+
+def analysis_time(stats):
+    
+    res = {}
+    model_names = set()
+    for stat in stats:
+        speech_dur = stat['speech_dur']
+        res.setdefault('speech_dur', 0)
+        res['speech_dur'] += speech_dur 
+        for data in stat['time_counter']:
+            model_name = data['model_name']
+            use_time = data['use_time']
+            rtf = data['rtf']
+        
+            res.setdefault(model_name, 0)
+            res[model_name] += use_time
+            model_names.add(model_name)
+    
+    num_utt = len(stats)
+    total_speech_dur = res['speech_dur']
+    for model_name in model_names:
+        use_time = res[model_name]
+        rtf = use_time / total_speech_dur
+        print(f'process {num_utt} utt, total {total_speech_dur}s speech, model {model_name},  use {use_time:.2f}s, rtf: {rtf:.2f}')
+    
+    
+    
+    
+            
 
 def main():
 
@@ -164,6 +205,7 @@ def main():
                 
     
     print(f'total use {time.time() - st_time} process {len(utts)} utts')
+    analysis_time(all_stats)
 
 if __name__ == "__main__":
     main()
