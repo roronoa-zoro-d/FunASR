@@ -6,6 +6,9 @@
 
 
 
+
+
+
         {
             "name": "Python train.py",
             "type": "debugpy",
@@ -33,14 +36,38 @@
             "program": "${workspaceFolder}/funasr/bin/train.py",
             "console": "integratedTerminal",
             "args": [
-                "++model=iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+                "++model=/home/zhangjiayuan/.cache/modelscope/hub/iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
                 "++freeze_param=['encoder', 'decoder.embed', 'decoder.after_norm', 'decoder.decoders', 'predictor']",
+                "++device=cuda:3",
                 "++train_data_set_list=${workspaceFolder}/examples/aishell/DATA/data/train/audio_datasets.jsonl", 
                 "++valid_data_set_list=${workspaceFolder}/examples/aishell/DATA/data/dev/audio_datasets.jsonl", 
-                "++output_dir=/data/nas/zhangjiayuan/experiment/modelscope/aishell/paraformer/exp/finetune-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch_exp1",
+                "++output_dir=/data/nas/zhangjiayuan/experiment/modelscope/aishell/paraformer/exp/finetune-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch_exp1",
                 "++dataset_conf.num_workers=1",
                 "++dataset_conf.batch_type=example",
-                "++dataset_conf.batch_size=10",
+                "++dataset_conf.batch_size=64",
+                "++decoder_conf.lora_list=qkv",
+                "++encoder_conf.lora_list=qkv",
+            ]
+        },
+
+        {
+            "name": "Python finetune lora train.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/funasr/bin/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "++model=/home/zhangjiayuan/.cache/modelscope/hub/iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+                "++device=cuda:3",
+                "++train_data_set_list=${workspaceFolder}/examples/aishell/DATA/data/train/audio_datasets.jsonl", 
+                "++valid_data_set_list=${workspaceFolder}/examples/aishell/DATA/data/dev/audio_datasets.jsonl", 
+                "++output_dir=/data/nas/zhangjiayuan/experiment/modelscope/aishell/paraformer/exp/finetune-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch_exp1",
+                "++dataset_conf.num_workers=1",
+                "++dataset_conf.batch_type=example",
+                "++dataset_conf.batch_size=64",
+                "++decoder_conf.lora_list=qkv",
+                "++encoder_conf.lora_list=qkv",
+                "++only_finetune_lora=True",
             ]
         },
 
