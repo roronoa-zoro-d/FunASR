@@ -51,8 +51,8 @@ def model_summary(model: torch.nn.Module) -> str:
 
     tot_params, num_params = 0, 0
     for name, param in model.named_parameters():
-        data = "name: {}, dtype: {}, device: {}, trainable: {}, shape: {}, numel: {}".format(
-                    name, param.dtype, param.device, param.requires_grad, param.shape, param.numel()
+        data = "name: {}, dtype: {}, device: {}, trainable: {}, shape: {}, numel: {} requires_grad: {}".format(
+                    name, param.dtype, param.device, param.requires_grad, param.shape, param.numel(), param.requires_grad
                 )
         print(data)
         message2 += data + "\n"
