@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 
 
-CUDA_VISIBLE_DEVICES="0,1,2,3"
+CUDA_VISIBLE_DEVICES="3"
 
 # general configuration
 feats_dir=/data/nas/zhangjiayuan/experiment/paraformer_finitune/exp1 #feature output dictionary
 exp_dir=/data/nas/zhangjiayuan/experiment/paraformer_finitune/exp1
 
-finitune_model_dir=/home/zhangjiayuan/.cache/modelscope/hub/iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch
-token_list=${finitune_model_dir}/tokens.json
+finetune_model_dir=/home/zhangjiayuan/.cache/modelscope/hub/iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch
+finetune_model_dir=/home/zhangjiayuan/.cache/modelscope/hub/iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch/
+token_list=${finetune_model_dir}/tokens.json
 
 
 lang=zh
@@ -88,6 +89,8 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   log_file="${exp_dir}/exp/${model_dir}/train.log.txt.${current_time}"
   echo "log_file: ${log_file}"
 
+ #   ++freeze_param="['encoder', 'decoder.embed', 'decoder.after_norm', 'decoder.decoders', 'predictor']" \
+
   export CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
   gpu_num=$(echo $CUDA_VISIBLE_DEVICES | awk -F "," '{print NF}')
   torchrun \
@@ -95,12 +98,15 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   --nproc_per_node ${gpu_num} \
   --master_port ${master_port} \
   ../../../funasr/bin/train.py \
-  ++model="iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch" \
-  ++freeze_param="['encoder', 'decoder.embed', 'decoder.after_norm', 'decoder.decoders', 'predictor']" \
+  ++model="${finetune_model_dir}" \
   ++train_data_set_list="${feats_dir}/data/${train_set}/audio_datasets.jsonl" \
   ++valid_data_set_list="${feats_dir}/data/${valid_set}/audio_datasets.jsonl" \
   ++dataset_conf.batch_size=128 \
   ++train_conf.keep_nbest_models=100 \
+  ++decoder_conf.lora_list=qkv \
+  ++encoder_conf.lora_list=qkv \
+  ++freeze_param=['encoder']" \
+  "++only_finetune_lora=True",
   ++output_dir="${exp_dir}/exp/${model_dir}"   &> ${log_file}
 fi
 
@@ -148,7 +154,7 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
           --config-name="config.yaml" \
           ++init_param="${exp_dir}/exp/${model_dir}/${inference_checkpoint}" \
           ++tokenizer_conf.token_list="${token_list}" \
-          ++frontend_conf.cmvn_file="${finitune_model_dir}/am.mvn" \
+          ++frontend_conf.cmvn_file="${finetune_model_dir}/am.mvn" \
           ++input="${_logdir}/keys.${JOB}.scp" \
           ++output_dir="${inference_dir}/${JOB}" \
           ++device="${inference_device}" \

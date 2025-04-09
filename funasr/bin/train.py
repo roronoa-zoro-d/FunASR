@@ -81,6 +81,7 @@ def main(**kwargs):
     logging.info("Build model, frontend, tokenizer")
     device = kwargs.get("device", "cuda")
     kwargs["device"] = "cpu"
+    kwargs['disable_update'] = True
     model = AutoModel(**kwargs)
 
     # save config.yaml
@@ -100,24 +101,65 @@ def main(**kwargs):
     model = model.model
     del kwargs["model"]
 
-    # freeze_param
+    # freeze_param 冻结参数的前缀
     freeze_param = kwargs.get("freeze_param", None)
     if freeze_param is not None:
         if "," in freeze_param:
             freeze_param = eval(freeze_param)
         if not isinstance(freeze_param, (list, tuple)):
             freeze_param = (freeze_param,)
-        logging.info("freeze_param is not None: %s", freeze_param)
-        for t in freeze_param:
-            for k, p in model.named_parameters():
-                if k.startswith(t + ".") or k == t:
-                    logging.info(f"Setting {k}.requires_grad = False")
-                    p.requires_grad = False
-        print(f'finetune params: ')
+    else:
+        freeze_param = []
+
+
+    # finetune params 微调的参数的前缀
+    only_finetune_lora = kwargs.get("only_finetune_lora", False)
+    finetune_param = []
+    if only_finetune_lora:
         for k, p in model.named_parameters():
-            if p.requires_grad == True:
-                print(k)
-        print(f'\n\n')
+            if "lora" in k:
+                fk = k.split('lora')[0].rstrip('.')
+                if fk not in set(finetune_param):
+                    finetune_param.append(fk)
+
+
+    # 从微调的参数中去除冻结的参数， 微调参数的前缀
+    finetune_param2 = []
+    for k in finetune_param:
+        is_need_finetune = True
+        for t in freeze_param:
+            if k.startswith(t + ".") or k == t:
+                is_need_finetune = False
+                break
+        if is_need_finetune:
+            finetune_param2.append(k)
+
+    # 获取需要冻结的参数
+    freeze_param = []
+    for k, p in model.named_parameters():
+        is_need_freeze = True
+        for t in finetune_param2:
+            if k.startswith(t + ".") or k == t:
+                is_need_freeze = False
+                break
+        if is_need_freeze:
+            freeze_param.append(k)
+
+    # 冻结参数梯度色渍为 false
+    if len(freeze_param) > 0:
+        logging.info("freeze_param is not None: %s", freeze_param)
+        freeze_param_set = set(freeze_param)
+        for k, p in model.named_parameters():
+            if k in freeze_param_set:
+                logging.info(f"Setting {k}.requires_grad = False")
+                p.requires_grad = False
+
+
+    print(f'finetune params: ')
+    for k, p in model.named_parameters():
+        if p.requires_grad == True:
+            print(k)
+    print(f'\n\n')
             
     if local_rank == 0:
         logging.info(f"{model_summary(model)}")
