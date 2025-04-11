@@ -105,6 +105,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   ++train_data_set_list="${feats_dir}/data/${train_set}/audio_datasets.jsonl" \
   ++valid_data_set_list="${feats_dir}/data/${valid_set}/audio_datasets.jsonl" \
   ++dataset_conf.batch_size=128 \
+  ++dataset_conf.num_workers=4 \
   ++dataset_conf.preprocessor_speech="SpeechPreprocessSpeedPerturb" \
   ++dataset_conf.preprocessor_speech_conf.speed_perturb=[0.9, 1.0, 1.1] \
   ++train_conf.keep_nbest_models=100 \
