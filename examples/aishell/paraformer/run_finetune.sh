@@ -10,7 +10,7 @@ token_list=${finitune_model_dir}/tokens.json
 
 # exp4 lora
 feats_dir=/data/nas/zhangjiayuan/experiment/paraformer_finitune/exp4/           # 数据 纯tts数据，和exp1一致
-exp_dir=/data/nas/zhangjiayuan/experiment/paraformer_finitune/exp4/exp2         # encoder和decoder 一起lora微调
+exp_dir=/data/nas/zhangjiayuan/experiment/paraformer_finitune/exp4/exp_test         # encoder和decoder 一起lora微调
 
 
 
@@ -105,6 +105,8 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   ++train_data_set_list="${feats_dir}/data/${train_set}/audio_datasets.jsonl" \
   ++valid_data_set_list="${feats_dir}/data/${valid_set}/audio_datasets.jsonl" \
   ++dataset_conf.batch_size=128 \
+  ++dataset_conf.preprocessor_speech="SpeechPreprocessSpeedPerturb" \
+  ++dataset_conf.preprocessor_speech_conf.speed_perturb=[0.9, 1.0, 1.1] \
   ++train_conf.keep_nbest_models=100 \
   ++decoder_conf.lora_list=qkv \
   ++encoder_conf.lora_list=qkv \
