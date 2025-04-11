@@ -3,13 +3,15 @@
 
 CUDA_VISIBLE_DEVICES="3"
 
-# general configuration
-feats_dir=/data/nas/zhangjiayuan/experiment/paraformer_finitune/exp1 #feature output dictionary
-exp_dir=/data/nas/zhangjiayuan/experiment/paraformer_finitune/exp1
 
-finetune_model_dir=/home/zhangjiayuan/.cache/modelscope/hub/iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch
-finetune_model_dir=/home/zhangjiayuan/.cache/modelscope/hub/iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch/
-token_list=${finetune_model_dir}/tokens.json
+
+finitune_model_dir=/root/.cache/modelscope/hub/models/iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch/
+token_list=${finitune_model_dir}/tokens.json
+
+# exp4 lora
+feats_dir=/data/nas/zhangjiayuan/experiment/paraformer_finitune/exp4/           # 数据 纯tts数据，和exp1一致
+exp_dir=/data/nas/zhangjiayuan/experiment/paraformer_finitune/exp4/exp2         # encoder和decoder 一起lora微调
+
 
 
 lang=zh
@@ -99,14 +101,14 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   --master_port ${master_port} \
   ../../../funasr/bin/train.py \
   ++model="${finetune_model_dir}" \
+  ++freeze_param="['encoder', 'decoder.embed', 'decoder.after_norm', 'decoder.decoders', 'predictor']" \
   ++train_data_set_list="${feats_dir}/data/${train_set}/audio_datasets.jsonl" \
   ++valid_data_set_list="${feats_dir}/data/${valid_set}/audio_datasets.jsonl" \
   ++dataset_conf.batch_size=128 \
   ++train_conf.keep_nbest_models=100 \
   ++decoder_conf.lora_list=qkv \
   ++encoder_conf.lora_list=qkv \
-  ++freeze_param=['encoder']" \
-  "++only_finetune_lora=True",
+  ++only_finetune_lora=True \
   ++output_dir="${exp_dir}/exp/${model_dir}"   &> ${log_file}
 fi
 
