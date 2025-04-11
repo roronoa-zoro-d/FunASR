@@ -121,9 +121,12 @@ def main(**kwargs):
                 fk = k.split('lora')[0].rstrip('.')
                 if fk not in set(finetune_param):
                     finetune_param.append(fk)
+    else:
+        for k, p in model.named_parameters():
+            finetune_param.append(k)
 
 
-    # 从微调的参数中去除冻结的参数， 微调参数的前缀
+    # 从微调的参数中 去除 冻结的参数， 微调参数的前缀
     finetune_param2 = []
     for k in finetune_param:
         is_need_finetune = True
