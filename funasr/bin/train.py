@@ -157,12 +157,12 @@ def main(**kwargs):
                 logging.info(f"Setting {k}.requires_grad = False")
                 p.requires_grad = False
 
-
-    print(f'finetune params: ')
-    for k, p in model.named_parameters():
-        if p.requires_grad == True:
-            print(k)
-    print(f'\n\n')
+    if local_rank == 0:
+        print(f'finetune params: ')
+        for k, p in model.named_parameters():
+            if p.requires_grad == True:
+                print(k)
+        print(f'\n\n')
             
     if local_rank == 0:
         logging.info(f"{model_summary(model)}")
