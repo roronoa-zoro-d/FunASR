@@ -18,6 +18,7 @@ nj=32
 
 data_dir=/data/nas/dataset/asr/kefu/huaian2
 data_dir=/data/nas/dataset/asr/kefu/huaian3
+data_dir=/data/nas/dataset/asr/kefu/huaian_testset/badcase/
 
 pcm_dir=${data_dir}/pcms
 raw_dir=${data_dir}/raws
