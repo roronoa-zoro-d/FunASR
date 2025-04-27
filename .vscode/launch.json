@@ -50,7 +50,7 @@
             ]
         },
 
-        {
+        {   
             "name": "Python finetune lora train.py",
             "type": "debugpy",
             "request": "launch",
@@ -65,10 +65,10 @@
                 "++dataset_conf.num_workers=1",
                 "++dataset_conf.batch_type=example",
                 "++dataset_conf.batch_size=64",
-                "++freeze_param=['encoder']",
                 "++decoder_conf.lora_list=qkv",
                 "++encoder_conf.lora_list=qkv",
                 "++only_finetune_lora=True",
+                //"++freeze_param=['encoder']",
             ]
         },
 
