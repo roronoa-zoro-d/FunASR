@@ -256,7 +256,7 @@ class AutoModel:
         kwargs["frontend"] = frontend
         # build model
         model_class = tables.model_classes.get(kwargs["model"])
-        assert model_class is not None, f'{kwargs["model"]} is not registered'
+        assert model_class is not None, f'{kwargs["model"]} is not registered\n{tables.model_classes}'
         model_conf = {}
         deep_update(model_conf, kwargs.get("model_conf", {}))
         deep_update(model_conf, kwargs)
@@ -266,6 +266,7 @@ class AutoModel:
         init_param = kwargs.get("init_param", None)
         if init_param is not None:
             if os.path.exists(init_param):
+                print(f"Loading pretrained params from {init_param}")
                 logging.info(f"Loading pretrained params from {init_param}")
                 load_pretrained_model(
                     model=model,
