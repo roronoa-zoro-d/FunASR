@@ -591,7 +591,7 @@ class Paraformer(torch.nn.Module):
                         if not hasattr(tokenizer, "bpemodel"):
                             text_postprocessed, _ = postprocess_utils.sentence_postprocess(token)
                         result_i = {"key": key[i], "text": text_postprocessed, "score": hyp.score.cpu().item(), "wd_score": wd_score}
-                    print(f'key: {key[i]}, text: {text_postprocessed}, score: {hyp.score.cpu().item()}')
+                    # print(f'key: {key[i]}, text: {text_postprocessed}, score: {hyp.score.cpu().item()}')
 
                     if ibest_writer is not None:
                         ibest_writer["token"][key[i]] = " ".join(token)
