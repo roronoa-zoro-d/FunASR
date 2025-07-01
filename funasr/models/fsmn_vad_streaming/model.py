@@ -14,6 +14,7 @@ from enum import Enum
 from dataclasses import dataclass
 from funasr.register import tables
 from typing import List, Tuple, Dict, Any, Optional
+import copy
 
 from funasr.utils.datadir_writer import DatadirWriter
 from funasr.utils.load_utils import load_audio_text_image_video, extract_fbank
@@ -299,6 +300,33 @@ class FsmnVADStreaming(nn.Module):
         encoder = encoder_class(**encoder_conf)
         self.encoder = encoder
         self.encoder_conf = encoder_conf
+        
+        self.ResetDebugInfo()
+        
+    def ResetDebugInfo(self):
+        
+        lookback_frame = int(self.vad_opts.max_end_silence_time / self.vad_opts.frame_in_ms)
+        if self.vad_opts.do_extend:
+            lookback_frame -= int(self.vad_opts.lookahead_time_end_point / self.vad_opts.frame_in_ms)
+            lookback_frame -= 1
+            lookback_frame = max(0, lookback_frame)
+        
+        debug_info = {}
+        debug_info['frame_length_ms'] = self.vad_opts.frame_length_ms
+        debug_info['frame_in_ms'] = self.vad_opts.frame_in_ms
+        debug_info['decibel'] = []
+        debug_info['frame_probs'] = []  # 帧级别状态
+        debug_info['windows_state'] = []    # 窗口级别状态
+        debug_info['waveforms']=None
+        debug_info['WindowDetector'] = [self.vad_opts.window_size_ms,self.vad_opts.sil_to_speech_time_thres,
+                                            self.vad_opts.speech_to_sil_time_thres,self.vad_opts.frame_in_ms,]
+        debug_info['lookback_time_start_point'] = self.vad_opts.lookback_time_start_point
+        debug_info['vad_latency'] = self.vad_opts.window_size_ms + self.vad_opts.lookback_time_start_point
+        debug_info['lookahead_time_end_point'] = self.vad_opts.lookahead_time_end_point
+        debug_info['lookback_frame'] = lookback_frame
+        debug_info['segments'] = []
+        debug_info['vad_log'] = ""
+        self.debug_info = debug_info
 
     def ResetDetection(self, cache: dict = {}):
         cache["stats"].continous_silence_frame_count = 0
@@ -345,6 +373,11 @@ class FsmnVADStreaming(nn.Module):
         decibel_numpy = decibel_numpy.tolist()
 
         cache["stats"].decibel.extend(decibel_numpy)
+        self.debug_info['decibel'].extend(decibel_numpy)
+        if self.debug_info['waveforms'] is None:
+            self.debug_info['waveforms'] = waveform_numpy
+        else:
+            self.debug_info['waveforms'] = np.hstack((self.debug_info['waveforms'], waveform_numpy))
 
 
     def ComputeScores(self, feats: torch.Tensor, cache: dict = {}) -> None:
@@ -480,6 +513,8 @@ class FsmnVADStreaming(nn.Module):
         if is_final_frame:
             self.OnVoiceEnd(cur_frm_idx, False, True, cache=cache)
             cache["stats"].vad_state_machine = VadStateMachine.kVadInStateEndPointDetected
+            self.debug_info['segments'][-1].append(cur_frm_idx)
+            self.debug_info['vad_log'] += f"frame {cur_frm_idx} sil2sil set_final_end_frame {cur_frm_idx}\n"
 
     def GetLatency(self, cache: dict = {}) -> int:
         return int(self.LatencyFrmNumAtStartPoint(cache=cache) * self.vad_opts.frame_in_ms)
@@ -542,7 +577,7 @@ class FsmnVADStreaming(nn.Module):
                     + cache["stats"].noise_average_decibel
                     * (self.vad_opts.noise_frame_num_used_for_snr - 1)
                 ) / self.vad_opts.noise_frame_num_used_for_snr
-
+        self.debug_info['frame_probs'].append([t, math.exp(speech_prob), frame_state.value])
         return frame_state
 
     def forward(
@@ -637,8 +672,7 @@ class FsmnVADStreaming(nn.Module):
 
         stats = Stats(
             sil_pdf_ids=self.vad_opts.sil_pdf_ids,
-            max_end_sil_frame_cnt_thresh=self.vad_opts.max_end_silence_time
-            - self.vad_opts.speech_to_sil_time_thres,
+            max_end_sil_frame_cnt_thresh=self.vad_opts.max_end_silence_time - self.vad_opts.speech_to_sil_time_thres,
             speech_noise_thres=self.vad_opts.speech_noise_thres,
         )
         cache["windows_detector"] = windows_detector
@@ -793,6 +827,7 @@ class FsmnVADStreaming(nn.Module):
         state_change = cache["windows_detector"].DetectOneFrame(
             tmp_cur_frm_state, cur_frm_idx, cache=cache
         )
+        self.debug_info['windows_state'].append([cur_frm_idx, state_change.value])
         frm_shift_in_ms = self.vad_opts.frame_in_ms
         if AudioChangeState.kChangeStateSil2Speech == state_change:
             silence_frame_count = cache["stats"].continous_silence_frame_count
@@ -805,6 +840,8 @@ class FsmnVADStreaming(nn.Module):
                     cur_frm_idx - self.LatencyFrmNumAtStartPoint(cache=cache),
                 )
                 self.OnVoiceStart(start_frame, cache=cache)
+                self.debug_info['segments'].append([start_frame])
+                self.debug_info['vad_log'] += f"frame {cur_frm_idx} sil2speech set_start_frame {start_frame}\n"
                 cache["stats"].vad_state_machine = VadStateMachine.kVadInStateInSpeechSegment
                 for t in range(start_frame + 1, cur_frm_idx + 1):
                     self.OnVoiceDetected(t, cache=cache)
@@ -817,6 +854,8 @@ class FsmnVADStreaming(nn.Module):
                 ):
                     self.OnVoiceEnd(cur_frm_idx, False, False, cache=cache)
                     cache["stats"].vad_state_machine = VadStateMachine.kVadInStateEndPointDetected
+                    self.debug_info['segments'][-1].append(cur_frm_idx)
+                    self.debug_info['vad_log'] += f"frame {cur_frm_idx} sil2speech set_force_end_frame {cur_frm_idx}\n"
                 elif not is_final_frame:
                     self.OnVoiceDetected(cur_frm_idx, cache=cache)
                 else:
@@ -833,6 +872,8 @@ class FsmnVADStreaming(nn.Module):
                     > self.vad_opts.max_single_segment_time / frm_shift_in_ms
                 ):
                     self.OnVoiceEnd(cur_frm_idx, False, False, cache=cache)
+                    self.debug_info['segments'][-1].append(cur_frm_idx)
+                    self.debug_info['vad_log'] += f"frame {cur_frm_idx} Speech2Sil set_force_end_frame {cur_frm_idx}\n"
                     cache["stats"].vad_state_machine = VadStateMachine.kVadInStateEndPointDetected
                 elif not is_final_frame:
                     self.OnVoiceDetected(cur_frm_idx, cache=cache)
@@ -850,6 +891,8 @@ class FsmnVADStreaming(nn.Module):
                     cache["stats"].max_time_out = True
                     self.OnVoiceEnd(cur_frm_idx, False, False, cache=cache)
                     cache["stats"].vad_state_machine = VadStateMachine.kVadInStateEndPointDetected
+                    self.debug_info['segments'][-1].append(cur_frm_idx)
+                    self.debug_info['vad_log'] += f"frame {cur_frm_idx} Speech2Speech set_force_end_frame {cur_frm_idx}\n"
                 elif not is_final_frame:
                     self.OnVoiceDetected(cur_frm_idx, cache=cache)
                 else:
@@ -859,7 +902,7 @@ class FsmnVADStreaming(nn.Module):
         elif AudioChangeState.kChangeStateSil2Sil == state_change:
             cache["stats"].continous_silence_frame_count += 1
             if cache["stats"].vad_state_machine == VadStateMachine.kVadInStateStartPointNotDetected:
-                # silence timeout, return zero length decision
+                # silence timeout, return zero length decision 单句模式下长时间检测不到起点， 或者句子结束没有检测到起点， 设置整个语音没有语音片段
                 if (
                     (self.vad_opts.detect_mode == VadDetectMode.kVadSingleUtteranceDetectMode.value)
                     and (
@@ -882,23 +925,27 @@ class FsmnVADStreaming(nn.Module):
                     cache["stats"].continous_silence_frame_count * frm_shift_in_ms
                     >= cache["stats"].max_end_sil_frame_cnt_thresh
                 ):
-                    lookback_frame = int(
-                        cache["stats"].max_end_sil_frame_cnt_thresh / frm_shift_in_ms
-                    )
+                    lookback_frame = int(cache["stats"].max_end_sil_frame_cnt_thresh / frm_shift_in_ms )
+                    a = lookback_frame
                     if self.vad_opts.do_extend:
-                        lookback_frame -= int(
-                            self.vad_opts.lookahead_time_end_point / frm_shift_in_ms
-                        )
+                        b = int(self.vad_opts.lookahead_time_end_point / frm_shift_in_ms)
+                        lookback_frame -= int(self.vad_opts.lookahead_time_end_point / frm_shift_in_ms)
                         lookback_frame -= 1
                         lookback_frame = max(0, lookback_frame)
+                        # print(f'frame {cur_frm_idx}:  sil2sil set_end_point: lookback_frame= {a} - {b} -1')
                     self.OnVoiceEnd(cur_frm_idx - lookback_frame, False, False, cache=cache)
                     cache["stats"].vad_state_machine = VadStateMachine.kVadInStateEndPointDetected
+                    
+                    self.debug_info['segments'][-1].append(cur_frm_idx- lookback_frame)
+                    self.debug_info['vad_log'] += f"frame {cur_frm_idx} Sil2Sil set_end_frame {cur_frm_idx- lookback_frame}\n"
                 elif (
                     cur_frm_idx - cache["stats"].confirmed_start_frame + 1
                     > self.vad_opts.max_single_segment_time / frm_shift_in_ms
                 ):
                     self.OnVoiceEnd(cur_frm_idx, False, False, cache=cache)
                     cache["stats"].vad_state_machine = VadStateMachine.kVadInStateEndPointDetected
+                    self.debug_info['segments'][-1].append(cur_frm_idx)
+                    self.debug_info['vad_log'] += f"frame {cur_frm_idx} Sil2Sil set_force_end_frame {cur_frm_idx}\n"
                 elif self.vad_opts.do_extend and not is_final_frame:
                     if cache["stats"].continous_silence_frame_count <= int(
                         self.vad_opts.lookahead_time_end_point / frm_shift_in_ms
