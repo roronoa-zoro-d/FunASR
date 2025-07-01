@@ -37,16 +37,16 @@ def cif(hidden, alphas, threshold):
 
     for t in range(len_time):
         alpha = alphas[:, t]
-        distribution_completion = torch.ones([batch_size], device=hidden.device) - integrate
+        distribution_completion = torch.ones([batch_size], device=hidden.device) - integrate    # 还差这么多权重够1
 
-        integrate += alpha
+        integrate += alpha      # 权重累加
         list_fires.append(integrate)
 
         fire_place = integrate >= threshold
         integrate = torch.where(
             fire_place, integrate - torch.ones([batch_size], device=hidden.device), integrate
-        )
-        cur = torch.where(fire_place, distribution_completion, alpha)
+        )   # 权重累加超过1，则进行一次发射，再减去1
+        cur = torch.where(fire_place, distribution_completion, alpha)   # 如果进行发射，则去剩余权重，否则取全部权重
         remainds = alpha - cur
 
         frame += cur[:, None] * hidden[:, t, :]
@@ -177,10 +177,10 @@ class CifPredictorV3(torch.nn.Module):
         mask_chunk_predictor=None,
         target_label_length=None,
     ):
-        h = hidden
-        context = h.transpose(1, 2)
-        queries = self.pad(context)
-        output = torch.relu(self.cif_conv1d(queries))
+        h = hidden                      # [B, T, C] [1, 34, 512]
+        context = h.transpose(1, 2)     # [B, C, T] [1, 512, 34]
+        queries = self.pad(context)     #           [1, 512, 36]
+        output = torch.relu(self.cif_conv1d(queries))   # [1, 512, 34]
 
         # alphas2 is an extra head for timestamp prediction
         if not self.use_cif1_cnn:
@@ -191,15 +191,15 @@ class CifPredictorV3(torch.nn.Module):
             output2 = self.upsample_cnn(_output)
             output2 = output2.transpose(1, 2)
         elif self.upsample_type == "cnn_blstm":
-            output2 = self.upsample_cnn(_output)
-            output2 = output2.transpose(1, 2)
-            output2, (_, _) = self.blstm(output2)
+            output2 = self.upsample_cnn(_output)    # [B, C, T2] [1, 512, 102]
+            output2 = output2.transpose(1, 2)       # [B, T2, C] [1, 102, 512]
+            output2, (_, _) = self.blstm(output2)   # [1, 102, 1024]
         elif self.upsample_type == "cnn_attn":
             output2 = self.upsample_cnn(_output)
             output2 = output2.transpose(1, 2)
             output2, _ = self.self_attn(output2, mask)
         
-        alphas2 = torch.sigmoid(self.cif_output2(output2))
+        alphas2 = torch.sigmoid(self.cif_output2(output2))      # [1, 102, 1]
         alphas2 = torch.nn.functional.relu(alphas2 * self.smooth_factor2 - self.noise_threshold2)
         # repeat the mask in T demension to match the upsampled length
         if mask is not None:
@@ -298,10 +298,10 @@ class CifPredictorV3(torch.nn.Module):
             ones_t = torch.ones_like(zeros_t)
             mask_1 = torch.cat([mask, zeros_t], dim=1)
             mask_2 = torch.cat([ones_t, mask], dim=1)
-            mask = mask_2 - mask_1
+            mask = mask_2 - mask_1          # 语音结束的那一帧为1，其他全为0
             tail_threshold = mask * tail_threshold
             alphas = torch.cat([alphas, zeros_t], dim=1)
-            alphas = torch.add(alphas, tail_threshold)
+            alphas = torch.add(alphas, tail_threshold)  #结束的位置补一帧，对应的alpha+tail_threshold
         else:
             tail_threshold = torch.tensor([tail_threshold], dtype=alphas.dtype).to(alphas.device)
             tail_threshold = torch.reshape(tail_threshold, (1, 1))
