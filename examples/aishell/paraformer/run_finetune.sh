@@ -6,12 +6,15 @@ CUDA_VISIBLE_DEVICES="3"
 
 
 finitune_model_dir=/root/.cache/modelscope/hub/models/iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch/
+finetune_model_dir=/data/nas/models/asr/modelscope/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch/
 token_list=${finitune_model_dir}/tokens.json
 
 # exp4 lora
 feats_dir=/data/nas/zhangjiayuan/experiment/paraformer_finitune/exp4/           # 数据 纯tts数据，和exp1一致
 exp_dir=/data/nas/zhangjiayuan/experiment/paraformer_finitune/exp4/exp_test         # encoder和decoder 一起lora微调
 
+feats_dir=/data/nas/zhangjiayuan/experiment/paraformer_finitune/exp6/           # 数据 纯tts数据，和exp1一致
+exp_dir=/data/nas/zhangjiayuan/experiment/paraformer_finitune/exp5/exp1_lora            # encoder和decoder 一起lora微调
 
 
 lang=zh
