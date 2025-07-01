@@ -9,7 +9,7 @@ mkdir -p $dir
 # Prepare data, the format of the text should be:
 # BAC009S0002W0122 而 对 楼市 成交 抑制 作用 最 大 的 限 购
 # BAC009S0002W0123 也 成为 地方 政府 的 眼中 钉 
-corpus=lm/text
+corpus=lm/text      # 分词后的文本: utt 词序列
 
 # generate lm dict
 cat $corpus | awk '{for(n=2;n<=NF;n++) print tolower($n); }' | \
