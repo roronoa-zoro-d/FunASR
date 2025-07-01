@@ -193,6 +193,8 @@ class MergedLinear(nn.Linear, LoRALayer):
         self.fan_in_fan_out = fan_in_fan_out
         # Actual trainable parameters
         if r > 0 and any(enable_lora):
+            if(out_features != out_features // len(enable_lora) * sum(enable_lora)):
+                print(f'warning: out_features is not divisible by the number of lora layers: out_features={out_features}, enable_lora={enable_lora}')
             self.lora_A = nn.Parameter(self.weight.new_zeros((r * sum(enable_lora), in_features)))
             self.lora_B = nn.Parameter(
                 self.weight.new_zeros((out_features // len(enable_lora) * sum(enable_lora), r))
@@ -223,7 +225,7 @@ class MergedLinear(nn.Linear, LoRALayer):
         result[:, self.lora_ind] = x.reshape(
             -1, self.out_features // len(self.enable_lora) * sum(self.enable_lora)
         )
-        return result.view((*x.shape[:-1], self.out_features))
+        return result.view((*x.shape[:-1], self.out_features)).contiguous()
 
     def train(self, mode: bool = True):
         def T(w):
@@ -242,6 +244,7 @@ class MergedLinear(nn.Linear, LoRALayer):
             self.merged = False
 
     def eval(self):
+        print(f'call MergedLinear eval merge_weights:{self.merge_weights}, merged={self.merged}')
         def T(w):
             return w.T if self.fan_in_fan_out else w
 
@@ -254,12 +257,16 @@ class MergedLinear(nn.Linear, LoRALayer):
                     self.lora_B.data.unsqueeze(-1),
                     groups=sum(self.enable_lora),
                 ).squeeze(0)
-                self.weight.data += self.zero_pad(T(delta_w * self.scaling))
+                # self.weight.data += self.zero_pad(T(delta_w * self.scaling))
+                self.weight.data += T(delta_w * self.scaling)
             self.merged = True
 
     def forward(self, x: torch.Tensor):
         def T(w):
             return w.T if self.fan_in_fan_out else w
+        
+        # if not self.training and self.merge_weights and not self.merged:
+        #     self.eval()
 
         if self.merged:
             return F.linear(x, T(self.weight), bias=self.bias)
