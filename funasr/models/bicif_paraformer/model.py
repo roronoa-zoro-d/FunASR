@@ -130,7 +130,7 @@ class BiCifParaformer(Paraformer):
         pre_acoustic_embeds, pre_token_length, alphas, pre_peak_index, pre_token_length2 = (
             self.predictor(encoder_out, None, encoder_out_mask, ignore_id=self.ignore_id)
         )
-        return pre_acoustic_embeds, pre_token_length, alphas, pre_peak_index
+        return pre_acoustic_embeds, pre_token_length, alphas, pre_peak_index, pre_token_length2
 
     def calc_predictor_timestamp(self, encoder_out, encoder_out_lens, token_num):
         encoder_out_mask = (
@@ -273,11 +273,12 @@ class BiCifParaformer(Paraformer):
 
         # predictor
         predictor_outs = self.calc_predictor(encoder_out, encoder_out_lens)
-        pre_acoustic_embeds, pre_token_length, alphas, pre_peak_index = (
+        pre_acoustic_embeds, pre_token_length, alphas, pre_peak_index, pre_token_length2 = (
             predictor_outs[0],
             predictor_outs[1],
             predictor_outs[2],
             predictor_outs[3],
+            predictor_outs[4],
         )
         pre_token_length = pre_token_length.round().long()
         if torch.max(pre_token_length) < 1:
@@ -295,8 +296,10 @@ class BiCifParaformer(Paraformer):
         results = []
         b, n, d = decoder_out.size()
         for i in range(b):
-            x = encoder_out[i, : encoder_out_lens[i], :]
-            am_scores = decoder_out[i, : pre_token_length[i], :]
+            x = encoder_out[i, : encoder_out_lens[i], :]    # [T,D]
+            am_scores = decoder_out[i, : pre_token_length[i], :]    # [L, 8404]
+            token_num = pre_token_length[i].item()
+            token_num2 = pre_token_length2[i].item()
             if self.beam_search is not None:
                 nbest_hyps = self.beam_search(
                     x=x,
@@ -309,8 +312,8 @@ class BiCifParaformer(Paraformer):
             else:
 
                 yseq = am_scores.argmax(dim=-1)
-                score = am_scores.max(dim=-1)[0]
-                score = torch.sum(score, dim=-1)
+                scores = am_scores.max(dim=-1)[0]
+                score = torch.sum(scores, dim=-1)
                 # pad with mask tokens to ensure compatibility with sos/eos tokens
                 yseq = torch.tensor([self.sos] + yseq.tolist() + [self.eos], device=yseq.device)
                 nbest_hyps = [Hypothesis(yseq=yseq, score=score)]
@@ -334,6 +337,7 @@ class BiCifParaformer(Paraformer):
                         lambda x: x != self.eos and x != self.sos and x != self.blank_id, token_int
                     )
                 )
+                scores = torch.exp(scores[:len(token_int)]).tolist()
 
                 if tokenizer is not None:
                     # Change integer-ids to tokens
@@ -355,6 +359,9 @@ class BiCifParaformer(Paraformer):
                         "key": key[i],
                         "text": text_postprocessed,
                         "timestamp": time_stamp_postprocessed,
+                        "scores": scores,
+                        "pre_token_num": token_num,
+                        "pre_token_num2": token_num2
                     }
 
                     if ibest_writer is not None:
@@ -362,6 +369,9 @@ class BiCifParaformer(Paraformer):
                         # ibest_writer["text"][key[i]] = text
                         ibest_writer["timestamp"][key[i]] = time_stamp_postprocessed
                         ibest_writer["text"][key[i]] = text_postprocessed
+                        ibest_writer["scores"][key[i]] = scores
+                        ibest_writer["pre_token_num"][key[i]] = token_num
+                        ibest_writer["pre_token_num2"][key[i]] = token_num2
                 else:
                     result_i = {"key": key[i], "token_int": token_int}
                 results.append(result_i)
