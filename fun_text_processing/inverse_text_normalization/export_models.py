@@ -3,6 +3,9 @@ from time import perf_counter
 from argparse import ArgumentParser
 from fun_text_processing.text_normalization.en.graph_utils import generator_main
 
+import logging
+logging.basicConfig(level=logging.INFO,
+                    format='[%(asctime)s-%(name)s-%(filename)s-%(funcName)s-%(lineno)d-%(levelname)s] %(message)s')
 
 def parse_args():
     parser = ArgumentParser()
@@ -114,6 +117,7 @@ def get_grammars(lang: str = "en"):
 
 if __name__ == "__main__":
     args = parse_args()
+    
 
     export_dir = args.export_dir
     os.makedirs(export_dir, exist_ok=True)
@@ -125,3 +129,10 @@ if __name__ == "__main__":
     generator_main(tagger_far_file, {"tokenize_and_classify": tagger_fst})
     generator_main(verbalizer_far_file, {"verbalize": verbalizer_fst})
     print(f"Time to generate graph: {round(perf_counter() - start_time, 2)} sec")
+    
+    
+    tagger_fst_file = os.path.join(export_dir, args.language + "_itn_tagger.fst")
+    verbalizer_fst_file = os.path.join(export_dir, args.language + "_itn_verbalizer.fst")
+    
+    tagger_fst.write(tagger_fst_file)
+    verbalizer_fst.write(verbalizer_fst_file)
