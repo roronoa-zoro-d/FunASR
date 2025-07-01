@@ -80,8 +80,10 @@ def read_json_data(in_file):
 
 
 def get_dir_files(in_dir, suffix, recursive=True):
-    wav_files = glob.glob(os.path.join(in_dir, '**', f'*{suffix}'), recursive=recursive)
-    
+    if recursive:
+        wav_files = glob.glob(os.path.join(in_dir, '**', f'*{suffix}'), recursive=recursive)
+    else:
+        wav_files = glob.glob(os.path.join(in_dir,  f'*{suffix}'), recursive=recursive)
     return wav_files
 
 
@@ -100,3 +102,49 @@ def remove_punctuation(text):
     return re.sub(pattern, '', text)
 
 
+def read_wav_scp(scp_file):
+    utts = []
+    wav2scp = {}
+    
+    with open(scp_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            utt, wav_path = line.strip().split()
+            utts.append(utt)
+            wav2scp[utt] = wav_path
+    
+    return utts, wav2scp
+
+
+
+
+def get_models(in_dir):
+    models = glob.glob(os.path.join(in_dir,  f'model.pt*'), recursive=False)
+    models_sorted = sorted(models, key=lambda x: os.path.getmtime(x), reverse=True)
+    return models_sorted
+
+
+
+def read_utts(filename):
+    utts = []
+    with open(filename, 'r') as f:
+        for line in f:
+            utt = line.strip()
+            utts.append(utt)
+    return utts
+
+
+def read_text(filename):
+    utts = []
+    utt2text = {}
+    
+    with open(filename, 'r') as f:
+        for line in f:
+            buff = line.strip().split("\t")
+            utt = buff[0]
+            text = ""
+            if len(buff) == 2:
+                text = buff[1]
+            utt2text[utt] = text
+            utts.append(utt)
+    
+    return utts, utt2text

@@ -20,6 +20,8 @@ data_dir=/data/nas/dataset/asr/kefu/huaian2
 data_dir=/data/nas/dataset/asr/kefu/huaian3
 data_dir=/data/nas/dataset/asr/kefu/huaian_testset/badcase/
 data_dir=/data/nas/dataset/asr/kefu/huaian_testset/data2/
+data_dir=/data/nas/dataset/asr/kefu/huaian4
+data_dir=/data/nas/dataset/asr/kefu/huaian3
 
 pcm_dir=${data_dir}/pcms
 raw_dir=${data_dir}/raws
@@ -70,7 +72,7 @@ fi
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     echo "stage 2: sox raw to wav"
 
-    [ ! -d ${wav_dir} ] && rm -rf ${wav_dir} && mkdir -p ${wav_dir}
+    # [ ! -d ${wav_dir} ] && rm -rf ${wav_dir} && mkdir -p ${wav_dir}
 
     find ${raw_dir}/ -name "*.raw" > ${temp_dir}/raw_list.txt
     # 生成输入输出 a/a.raw b/b.wav
