@@ -78,7 +78,7 @@ def download_from_ms(**kwargs):
         if os.path.exists(os.path.join(model_or_path, "jieba_usr_dict")):
             kwargs["jieba_usr_dict"] = os.path.join(model_or_path, "jieba_usr_dict")
     if isinstance(kwargs, DictConfig):
-        kwargs = OmegaConf.to_container(kwargs, resolve=True)
+        kwargs = OmegaConf.to_container(kwargs, resolve=True)   # 转换为普通字典
     if os.path.exists(os.path.join(model_or_path, "requirements.txt")):
         requirements = os.path.join(model_or_path, "requirements.txt")
         print(f"Detect model requirements, begin to install it: {requirements}")
@@ -229,6 +229,8 @@ def get_or_download_model_dir(
         except:
             print("could not check the latest version")
     else:
+        user_agent={Invoke.KEY: key, ThirdParty.KEY: "funasr"}
+        print(f'model {model}, revision {model_revision} user_agent: {user_agent}')
         model_cache_dir = snapshot_download(
             model, revision=model_revision, user_agent={Invoke.KEY: key, ThirdParty.KEY: "funasr"}
         )
