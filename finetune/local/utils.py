@@ -5,6 +5,10 @@ import random
 import numpy as np
 import json
 import re
+import logging
+import argparse
+import librosa
+
 
 # 获取时间戳
 def get_beijing_timestamp():
@@ -23,6 +27,45 @@ def get_beijing_timestamp():
     # 格式化时间为年月日时
     timestamp = beijing_time.strftime("%Y%m%d%H")
     return timestamp
+
+def generate_random_string():
+    # 获取当前进程ID
+    pid = os.getpid()
+    # 获取当前时间戳（精确到毫秒）
+    timestamp = get_beijing_timestamp()
+    # 生成随机数（0-9999）
+    rand_num = random.randint(0, 9999)
+    # 组合成唯一字符串
+    unique_str = f"{timestamp}_{pid}_{rand_num}"
+    return unique_str
+
+
+
+def get_logger_file(log_file,  std_out=False):
+    # 创建 logger 实例
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)  # 设置日志级别
+    # 移除所有默认处理器（避免控制台输出）
+    logger.handlers.clear()
+    logger.propagate = False
+
+    # 创建文件处理器（追加模式）
+    file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+    file_handler.setLevel(logging.DEBUG)  # 文件日志级别
+    formatter = logging.Formatter('[%(asctime)s %(processName)s:%(process)d %(name)s %(filename)s:%(lineno)d %(funcName)s %(levelname)s]: %(message)s')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    
+    if std_out:
+        # 创建控制台处理器
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(logging.INFO)  # 控制台日志级别
+        formatter = logging.Formatter('[%(asctime)s %(name)s %(levelname)s]: %(message)s')
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+
+    return logger
+
 
 
 # 数据集划分
@@ -95,6 +138,16 @@ def get_wav_scp(in_dir, suffix, recursive=True):
         wav_scp[utt_id] = wav_file
     return wav_scp
 
+def read_wav_scp_file(scp_file):
+    utts = []
+    wav2scp = {}
+    with open(scp_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            utt, wav_path = line.strip().split()
+            utts.append(utt)
+            wav2scp[utt] = wav_path
+    return utts, wav2scp
+
 def remove_punctuation(text):
     # 匹配所有中文标点、英文标点、数字间的符号（保留字母数字和空格）
     pattern = r'[^\w\d]'  # 匹配非字母数字、的字符
@@ -148,3 +201,68 @@ def read_text(filename):
             utts.append(utt)
     
     return utts, utt2text
+
+
+
+
+def get_parse():
+    parser = argparse.ArgumentParser(description='')
+    
+    parser.add_argument('--wav_in', type=str, 
+                        default=None,
+                        help='wav file')
+
+    parser.add_argument('--wav_scp', type=str, 
+                        default=None,
+                        help='wav_scp file')
+    parser.add_argument('--wav_dir', type=str, 
+                        default=None,
+                        help='Path to the wav directory')
+    
+    parser.add_argument('--out_dir', type=str, 
+                        default=None,
+                        help='Path to the output directory')
+    
+
+    return parser
+
+
+def get_wavs_from_args(args):
+    
+    datas = []
+    if args.wav_in:
+        utt = os.path.basename(args.wav_in)[:-4]
+        datas.append([utt, args.wav_in])
+    elif args.wav_scp:
+        utts, wav2scp = read_wav_scp_file(args.wav_scp)
+        for utt in utts:
+            datas.append([utt, wav2scp[utt]])
+    elif args.wav_dir:
+        wavs = get_dir_files(args.wav_dir, '.wav')
+        for wav_file in wavs:
+            utt = os.path.basename(wav_file)[:-4]
+            datas.append([utt, wav_file])
+    else:
+        print(f'error: parse args error: {args}')
+    
+    return datas
+
+
+
+def draw_spec(ax, speech, sample_rate):
+    n_fft = 1024
+    hop_length=512
+    n_mels=120
+    mel_spec = librosa.feature.melspectrogram(y=speech, sr=sample_rate, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
+
+    log_mel_spec = librosa.power_to_db(mel_spec, ref=np.max)
+
+    # Normalize data
+    min_level_db=-100
+    mel_spec_db = (log_mel_spec - min_level_db) / (-min_level_db)
+
+    # 显示 Mel 频谱图
+    librosa.display.specshow(mel_spec_db, ax=ax, x_axis='time', y_axis='mel', sr=sample_rate, hop_length=hop_length,fmax=sample_rate/2)
+
+    # 添加颜色条
+    # plt.colorbar(format="%+2.0f dB")

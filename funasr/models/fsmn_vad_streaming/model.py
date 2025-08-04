@@ -116,6 +116,12 @@ class VADXOptions:
         self.output_frame_probs = output_frame_probs
         self.frame_in_ms = frame_in_ms
         self.frame_length_ms = frame_length_ms
+        
+    def __str__(self):
+        # 提取关键参数或所有参数
+        params = {k: v for k, v in self.__dict__.items() 
+                 if not k.startswith('_')}  # 过滤私有属性
+        return f"VADXOptions({params})"
 
 
 class E2EVadSpeechBufWithDoa(object):
